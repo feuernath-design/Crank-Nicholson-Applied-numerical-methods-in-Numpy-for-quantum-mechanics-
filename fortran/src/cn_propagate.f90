@@ -5,9 +5,12 @@
 !> Reads the namelist &config (all entries optional, defaults below), runs the
 !> propagation and writes a CSV file with columns
 !>     t, norm, x_mean, overlap_abs
-!> where overlap_abs = |<psi(0)|psi(t)>|. A one-line summary is printed on
-!> standard output.
+!> where overlap_abs = |<psi(0)|psi(t)>|. A short summary is printed on
+!> standard output. The reported propagation time includes the observables
+!> and CSV output of the recorded steps (use a large record_every to time
+!> the solver alone).
 program cn_propagate
+   use, intrinsic :: iso_fortran_env, only: int64
    use tdse_cn
    implicit none
 
@@ -34,7 +37,7 @@ program cn_propagate
    complex(dp), allocatable :: psi(:), psi_init(:)
    real(dp) :: dx, off, energy, t_mid, t_ramp, field, nrm, xm, ov, max_norm_err
    integer :: k, unit_cfg, unit_out, ios, iterations, i
-   integer(8) :: clock_start, clock_end, clock_rate
+   integer(int64) :: clock_start, clock_end, clock_rate
    logical :: converged
    character(len=256) :: cfg_file
 
@@ -87,9 +90,9 @@ program cn_propagate
    open (newunit=unit_out, file=trim(output), status='replace', action='write', iostat=ios)
    if (ios /= 0) error stop 'cannot open output file'
    write (unit_out, '(a)') 't,norm,x_mean,overlap_abs'
+   max_norm_err = 0.0_dp
    call write_row(0.0_dp)
 
-   max_norm_err = 0.0_dp
    call system_clock(clock_start, clock_rate)
    do k = 1, n_steps
       t_mid = (real(k - 1, dp) + 0.5_dp)*dt

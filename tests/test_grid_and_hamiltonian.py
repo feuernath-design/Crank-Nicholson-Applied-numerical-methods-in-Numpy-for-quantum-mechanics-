@@ -77,3 +77,12 @@ class TestHamiltonian:
         _, states = h.eigh(3)
         for j in range(3):
             assert h.grid.norm2(states[:, j]) == pytest.approx(1.0, abs=1e-12)
+
+
+def test_mass_dependence_of_spectrum():
+    """V = m w^2 x^2 / 2 gives E_n = w (n + 1/2) for any mass m."""
+    g = Grid.symmetric(15.0, 3001)
+    for mass in (0.5, 2.0):
+        h = Hamiltonian1D(g, potentials.harmonic(g.x, omega=1.3, mass=mass), mass=mass)
+        energies, _ = h.eigh(3)
+        np.testing.assert_allclose(energies, 1.3 * (np.arange(3) + 0.5), atol=2e-4)

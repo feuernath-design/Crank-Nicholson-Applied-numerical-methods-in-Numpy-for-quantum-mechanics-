@@ -15,17 +15,17 @@ This work comes from my research internship in quantum mechanics at the **CNRS (
 
 ## Highlights
 
-- **O(N) Crank–Nicolson propagator** for $H(t) = -\tfrac12\partial_x^2 + V(x) + E(t)\,x$, with mid-point evaluation of the field (second order in time) and banded LAPACK solves.
+- **O(N) Crank–Nicolson propagator** for $H(t) = -\frac{1}{2}\partial_x^2 + V(x) + F(t) x$, with mid-point evaluation of the laser field $F(t)$ (second order in time) and LAPACK tridiagonal solves.
 - **Shifted inverse iteration** with an accelerated shift update for stationary states (7 iterations for the soft-Coulomb ground state instead of 25).
-- **Fortran 2008 port** (Thomas algorithm, namelist input) that agrees with Python to **6 × 10⁻¹⁵**.
+- **Fortran 2008 port** (Thomas algorithm, namelist input) that agrees with Python to **6 × 10⁻¹⁵** and runs the propagation 1.7× faster.
 - **Verified numerics**: norm conserved to ~10⁻¹⁴, spatial order 2.003, temporal order 1.999, eigenstate phase equal to the closed-form Cayley phase $\tfrac{2}{\Delta t}\arctan\tfrac{E\Delta t}{2}$ to round-off.
-- **Physics**: 1 − P₀ ∝ E₀² (slope 2.0000) and linear in pulse duration (Fermi's golden rule), adiabatic vs sudden turn-on of the field.
-- 48 automated tests (pytest), lint (ruff) and Fortran build checked by GitHub Actions on Python 3.10–3.13.
+- **Physics**: 1 − P₀ ∝ F₀² (slope 2.0000) and linear in pulse duration (Fermi's golden rule), adiabatic vs sudden turn-on of the field.
+- 53 automated tests (pytest), lint (ruff) and a strict Fortran debug build checked by GitHub Actions on Python 3.10–3.13.
 
 ## The method in one equation
 
 $$
-\Big(1 + \tfrac{i\Delta t}{2}\,H_{n+1/2}\Big)\,\psi^{n+1} \;=\; \Big(1 - \tfrac{i\Delta t}{2}\,H_{n+1/2}\Big)\,\psi^{n}
+\left(1 + \frac{i\Delta t}{2} H_{n+1/2}\right) \psi^{n+1} = \left(1 - \frac{i\Delta t}{2} H_{n+1/2}\right) \psi^{n}
 $$
 
 The one-step propagator is the Cayley transform of $H$, which is **exactly unitary** (norm conserved for any $\Delta t$), **unconditionally stable**, **time-reversible** and **second-order accurate**. With finite differences, $H$ is tridiagonal, so each step costs $O(N)$. Full derivations (unitarity, phase-error formula, inverse iteration, perturbation-theory predictions) are in [`docs/theory.md`](docs/theory.md).
@@ -52,28 +52,28 @@ A displaced Gaussian in a harmonic trap oscillates rigidly along the classical t
 
 ### 4. Driven atom: sudden vs adiabatic turn-on — `scripts/04_driven_atom.py`
 
-Soft-Coulomb atom $V = -1/\sqrt{1+x^2}$ ($E_0 = -0.6699$ a.u.) in a field $E_0 = 0.01$, $\omega = 1$ a.u. (figure at the top).
-A sudden turn-on excites the free response of the atom, which beats at $\omega \pm \omega_{10}$ ($\omega_{10} = 0.395$ a.u.). With a 4-cycle $\sin^2$ turn-on the response becomes smooth and $\pi/\omega$-periodic (adiabatic polarisation, $\propto E(t)^2$), with a slow decay due to ionisation.
+Soft-Coulomb atom $V = -1/\sqrt{1+x^2}$ (ground-state energy $-0.6699$ a.u. at $\Delta x = 0.1$) in a field of amplitude $F_0 = 0.01$ a.u. and frequency $\omega = 1$ a.u. (figure at the top).
+A sudden turn-on excites the free response of the atom, which beats at $\omega \pm \omega_{10}$ ($\omega_{10} = 0.395$ a.u.). With a 4-cycle $\sin^2$ turn-on the transient disappears: the atom follows the field-dressed (Floquet) state, and the overlap becomes smooth and $\pi/\omega$-periodic (a $2\omega$ oscillation of order $F_0^2$). Since $\omega > \omega_{10}$, the ground-state loss is in antiphase with $F(t)^2$: it peaks when the field crosses zero. A slow decay due to ionisation is superimposed.
 
 The irregular curve is **physics, not a numerical artefact**: the script checks that the norm is conserved to 4 × 10⁻¹⁵, that halving $\Delta t$ changes the result by only 7 × 10⁻⁷, and that without field $|\langle\psi_0|\psi\rangle| = 1$ to 3 × 10⁻¹⁴.
 
 ### 5. Photo-ionisation scans — `scripts/05_photoionization_scans.py`
 
-Trapezoidal pulses (4-cycle ramps) followed by 2 field-free cycles; $P_0 = |\langle\psi_0|\psi_{\rm final}\rangle|^2$.
+Trapezoidal pulses (4-cycle ramps, 8-cycle plateau) followed by 2 field-free cycles; $P_0 = |\langle\psi_0|\psi_{\rm final}\rangle|^2$.
 
-| Amplitude scan (ω = 1) | Duration scan (ω = 1, E₀ = 0.01) |
+| Amplitude scan (ω = 1) | Duration scan (ω = 1, F₀ = 0.01) |
 |---|---|
 | <img src="figures/05c_amplitude_scan.png" alt="Amplitude scan"> | <img src="figures/05d_duration_scan.png" alt="Duration scan"> |
-| 1 − P₀ ∝ E₀² (first-order perturbation theory), slope **2.0000** for E₀ ≤ 0.01 | 1 − P₀ linear in the duration: constant ionisation rate Γ ≈ 4.8 × 10⁻⁶ a.u. (Fermi's golden rule) |
+| 1 − P₀ ∝ F₀² (first-order perturbation theory), slope **2.0000** for F₀ ≤ 0.01 | 1 − P₀ linear in the duration: constant ionisation rate Γ ≈ 4.8 × 10⁻⁶ a.u. (Fermi's golden rule) |
 
-| Frequency scan (E₀ = 0.01) | Time trace (trapezoid) |
+| Frequency scan (F₀ = 0.01) | Time trace (trapezoid) |
 |---|---|
 | <img src="figures/05b_frequency_scan.png" alt="Frequency scan"> | <img src="figures/05a_trapezoid_overlap.png" alt="Trapezoid pulse"> |
-| All ω above $I_p = 0.67$ a.u.: depletion decreases with ω like the photo-ionisation cross-section | The overlap freezes once the field is off: the remaining loss is real ionisation |
+| All ω are above $I_p = 0.67$ a.u. The pulses have a fixed number of cycles, so they get shorter as 1/ω; the depletion per unit time (right) isolates the ionisation rate, which drops by ~500× from ω = 0.8 to 2.5 like the photo-ionisation cross-section | The overlap freezes once the field is off: the remaining loss is real ionisation |
 
 ### 6. Fortran vs Python — `scripts/06_fortran_vs_python.py`
 
-Same algorithm in both languages (3001 points, 2432 steps): maximum difference **6.4 × 10⁻¹⁵** on $|\langle\psi_0|\psi(t)\rangle|$. Propagation time on one core: Fortran 0.39 s, Python/SciPy 0.51 s — NumPy vectorisation plus a LAPACK banded solver keeps Python within ~30 % of compiled code here.
+Same algorithm in both languages (3001 points, 2432 steps): maximum difference **6.4 × 10⁻¹⁵** on $|\langle\psi_0|\psi(t)\rangle|$. Propagation only (no observables or output, best of 3, one core): Fortran 0.27 s, Python/SciPy 0.44 s, a 1.7× ratio. Vectorised NumPy plus a LAPACK tridiagonal solver keeps the Python version reasonably close to compiled code.
 
 <img src="figures/06_fortran_vs_python.png" width="70%" alt="Fortran vs Python">
 
@@ -84,7 +84,7 @@ git clone https://github.com/feuernath-design/Crank-Nicholson-Applied-numerical-
 cd Crank-Nicholson-Applied-numerical-methods-in-Numpy-for-quantum-mechanics-
 python -m pip install -e ".[dev]"
 
-pytest                                  # 48 tests (Fortran tests need gfortran)
+pytest                                  # 53 tests (Fortran tests need gfortran)
 python scripts/04_driven_atom.py        # any script; --show to display, --quick for a fast run
 make figures                            # regenerate every figure
 ```
@@ -118,12 +118,12 @@ print(result["overlap"].min(), abs(result["norm"] - 1).max())   # 0.99966, ~1e-1
 ```bash
 cd fortran
 make                                   # optimised build  -> build/cn_propagate
-make debug                             # -fcheck=all, FP traps, -Werror
+make debug                             # -fcheck=all, NaN-initialised reals, FP traps, -Werror
 ./build/cn_propagate examples/soft_coulomb.nml
 ./build/cn_propagate examples/harmonic_wavepacket.nml
 ```
 
-Parameters are read from a namelist (`&config`, see [`fortran/examples/`](fortran/examples/)); the output is a CSV file `t, norm, x_mean, overlap_abs`.
+Parameters are read from a namelist (`&config`, see [`fortran/examples/`](fortran/examples/)); the output is a CSV file `t, norm, x_mean, overlap_abs`. In the namelist, `e0` is the field amplitude $F_0$.
 
 ## Repository layout
 

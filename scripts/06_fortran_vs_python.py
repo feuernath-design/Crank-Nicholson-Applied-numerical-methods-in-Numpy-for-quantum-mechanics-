@@ -2,8 +2,12 @@
 
 Builds ``fortran/`` with make (gfortran), runs the soft-Coulomb example
 (ground state + sin^2-ramped field, 19 optical cycles, 2432 steps) with both
-implementations, and reports the maximum difference of |<psi0|psi(t)>| and the
-wall-clock time of the propagation.
+implementations, and reports the maximum difference of |<psi0|psi(t)>|.
+
+Timing: the comparison run records observables at every step. The solvers are
+then timed separately *without* observables or output (Fortran with
+record_every = n_steps, Python without observables), best of 3 runs, so that
+both timings measure the propagation only.
 """
 
 import shutil
@@ -39,15 +43,15 @@ def main() -> None:
     dt = period / 128
     n_steps = (n_ramp + (4 if args.quick else 15)) * 128
 
-    with tempfile.TemporaryDirectory() as tmp:
-        csv = Path(tmp) / "out.csv"
-        nml = Path(tmp) / "config.nml"
+    def run_fortran(tmp: Path, record_every: int) -> tuple[np.ndarray, float]:
+        csv = tmp / "out.csv"
+        nml = tmp / "config.nml"
         nml.write_text(
             "&config\n"
             "  potential = 'softcoulomb', initial = 'ground'\n"
             "  x_min = -150.0, x_max = 150.0, nx = 3001\n"
             f"  omega = {omega!r}, e0 = {e0!r}, n_ramp = {float(n_ramp)!r}\n"
-            f"  dt = {dt!r}, n_steps = {n_steps}, record_every = 1\n"
+            f"  dt = {dt!r}, n_steps = {n_steps}, record_every = {record_every}\n"
             f"  output = '{csv}'\n/\n"
         )
         out = subprocess.run(
@@ -56,25 +60,36 @@ def main() -> None:
             capture_output=True,
             text=True,
         ).stdout
-        print("Fortran:", out.strip().replace("\n", " | "))
-        fortran = np.loadtxt(csv, delimiter=",", skiprows=1)
-    t_fortran = float(out.split("propagation time=")[1].split()[0])
+        seconds = float(out.split("propagation time=")[1].split()[0])
+        return np.loadtxt(csv, delimiter=",", skiprows=1), seconds
+
+    with tempfile.TemporaryDirectory() as tmp:
+        fortran, _ = run_fortran(Path(tmp), record_every=1)
+        t_fortran = min(run_fortran(Path(tmp), record_every=n_steps)[1] for _ in range(3))
 
     grid = Grid.from_spacing(-150.0, 150.0, 0.1)
     h = Hamiltonian1D(grid, potentials.soft_coulomb(grid.x))
     ground = inverse_iteration(h, shift=-1.0)
     field = LaserField(e0, omega, sin2_ramp_envelope(n_ramp * period))
-    start = time.perf_counter()
-    res = CrankNicolson(h, dt, field=field).propagate(
+    prop = CrankNicolson(h, dt, field=field)
+    res = prop.propagate(
         ground.state,
         n_steps,
         observables={"overlap": lambda psi: abs(grid.inner(ground.state, psi))},
     )
-    t_python = time.perf_counter() - start
+    t_python = np.inf
+    for _ in range(3):
+        start = time.perf_counter()
+        prop.propagate(ground.state, n_steps)
+        t_python = min(t_python, time.perf_counter() - start)
 
     diff = np.max(np.abs(fortran[:, 3] - res["overlap"]))
     print(f"max |overlap_Fortran - overlap_Python| = {diff:.2e}")
-    print(f"propagation time: Fortran {t_fortran:.3f} s, Python/SciPy {t_python:.3f} s")
+    print(
+        f"propagation only ({n_steps} steps, N = {grid.n}, best of 3): "
+        f"Fortran {t_fortran:.3f} s, Python/SciPy {t_python:.3f} s "
+        f"(ratio {t_python / t_fortran:.2f})"
+    )
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
     ax1.plot(res.times, res["overlap"], label="Python (NumPy/SciPy)")

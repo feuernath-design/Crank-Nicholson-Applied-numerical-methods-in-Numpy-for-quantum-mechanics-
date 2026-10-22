@@ -43,6 +43,11 @@ class TestEnvelopes:
         assert isinstance(field(0.3), float)
         assert field(np.array([0.0, np.pi / 4])).shape == (2,)
 
+    def test_laser_field_phase(self):
+        cos_field = LaserField(0.1, 2.0, phase=np.pi / 2)
+        t = np.linspace(0, 3, 7)
+        np.testing.assert_allclose(cos_field(t), 0.1 * np.cos(2.0 * t), atol=1e-15)
+
 
 class TestAnalysis:
     def test_effective_energy_expansion(self):

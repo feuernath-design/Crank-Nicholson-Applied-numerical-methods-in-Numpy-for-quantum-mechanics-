@@ -16,7 +16,7 @@ Convergence is accelerated by updating the shift with
 (for an exact eigenvector ``<phi|(H - eps)^{-1}|phi> = 1/(E - eps)`` so the
 update lands on ``E``). The first few iterations use a fixed shift so that
 the iteration locks onto the eigenvalue nearest to the *initial* shift
-before the (cubically convergent) shift update kicks in.
+before the (much faster) shift update kicks in.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 """Spatial convergence: harmonic-oscillator ground state versus grid spacing.
 
 The ground state of H = -1/2 d^2/dx^2 + x^2/2 on [-20, 20] is computed by
-shifted inverse iteration for N = 100 ... 1600 grid points and compared with
+shifted inverse iteration for N = 100 ... 3200 grid points and compared with
 the exact value E0 = 1/2. The 3-point Laplacian is second-order accurate, so
 the error should scale as dx^2 (slope 2 in log-log).
 """

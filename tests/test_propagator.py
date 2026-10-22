@@ -132,3 +132,15 @@ def test_absorbing_mask_removes_outgoing_flux():
 def test_invalid_dt(ho, bad):
     with pytest.raises(ValueError):
         CrankNicolson(ho, bad)
+
+
+def test_mask_and_field_together(atom):
+    """With a field and an absorber, the norm can only decrease and stays <= 1."""
+    h, ground = atom
+    mask = absorbing_mask(h.grid, width=20.0)
+    field = LaserField(0.1, 1.0, sin2_ramp_envelope(2 * np.pi))
+    res = CrankNicolson(h, 2 * np.pi / 128, field=field, mask=mask).propagate(
+        ground.state, 1280, observables={"n": h.grid.norm2}
+    )
+    assert np.all(np.diff(res["n"]) <= 1e-15)
+    assert 0.0 < res["n"][-1] < 1.0

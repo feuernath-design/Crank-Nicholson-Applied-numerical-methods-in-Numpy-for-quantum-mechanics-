@@ -1,17 +1,20 @@
 """1D soft-Coulomb atom in a laser field: sudden versus adiabatic turn-on.
 
 H(t) = -1/2 d^2/dx^2 - 1/sqrt(1 + x^2) + E(t) x on [-150, 150] (dx = 0.1).
-The ground state (E0 = -0.6699 a.u.) is obtained by inverse iteration and
-propagated in E(t) = E0 f(t) sin(omega t) with E0 = 0.01, omega = 1 a.u.,
+The ground state (E0 = -0.6699 a.u. at dx = 0.1) is obtained by inverse iteration and
+propagated in F(t) = F0 f(t) sin(omega t) with F0 = 0.01, omega = 1 a.u.,
 128 steps per optical cycle.
 
 * Sudden turn-on (f = 1 from t = 0): the abrupt switch excites the free
   response of the atom, which beats at omega +/- omega_10
   (omega_10 = E1 - E0 = 0.395 a.u.) on top of the forced response.
-* sin^2 turn-on over 4 cycles: the transient disappears and the overlap
-  |<psi0|psi(t)>| becomes smooth and periodic with period pi/omega (the
-  ground state is adiabatically polarised, a quadratic effect in E(t)),
-  slowly decaying because of one-photon ionisation (omega > Ip = 0.67 a.u.).
+* sin^2 turn-on over 4 cycles: the transient disappears and the atom
+  follows the field-dressed (Floquet) state. The overlap |<psi0|psi(t)>| is
+  then smooth and periodic with period pi/omega (2 omega oscillation of order
+  F0^2). Because omega > omega_10 the loss of ground-state population is in
+  antiphase with F(t)^2 (largest when the field crosses zero). On top of
+  this, the overlap slowly decays through one-photon ionisation
+  (omega > Ip = 0.67 a.u.).
 
 The script also runs the numerical checks quoted in the README: norm
 conservation, time-step convergence and the field-free reference.
@@ -55,7 +58,7 @@ def main() -> None:
     print(f"E0 = {ground.energy:.6f} a.u.  ({ground.iterations} iterations)")
     print(f"E1 = {e1:.6f} a.u.  -> omega_10 = {e1 - ground.energy:.4f} a.u.")
 
-    e0, omega = 1e-2, 1.0
+    f0, omega = 1e-2, 1.0
     period = 2 * np.pi / omega
     steps_per_cycle = 128
     dt = period / steps_per_cycle
@@ -63,12 +66,12 @@ def main() -> None:
     n_ramp = 4
 
     sudden = run(
-        h, ground, LaserField(e0, omega, constant_envelope()), dt, n_cycles * steps_per_cycle
+        h, ground, LaserField(f0, omega, constant_envelope()), dt, n_cycles * steps_per_cycle
     )
     ramped = run(
         h,
         ground,
-        LaserField(e0, omega, sin2_ramp_envelope(n_ramp * period)),
+        LaserField(f0, omega, sin2_ramp_envelope(n_ramp * period)),
         dt,
         (n_ramp + n_cycles) * steps_per_cycle,
     )
@@ -80,7 +83,7 @@ def main() -> None:
     half = run(
         h,
         ground,
-        LaserField(e0, omega, constant_envelope()),
+        LaserField(f0, omega, constant_envelope()),
         dt / 2,
         2 * n_cycles * steps_per_cycle,
         record_every=2,
@@ -95,15 +98,16 @@ def main() -> None:
     # ------------------------------------------------------------- figure
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7.5), sharex=False)
     ax1.plot(sudden.times, sudden["overlap"], lw=1.2)
-    ax1.set_title(r"Sudden turn-on: $E(t) = E_0 \sin(\omega t)$  ($E_0 = 0.01$, $\omega = 1$ a.u.)")
+    ax1.set_title(r"Sudden turn-on: $F(t) = F_0 \sin(\omega t)$  ($F_0 = 0.01$, $\omega = 1$ a.u.)")
     ax1.set_ylabel(r"$|\langle\psi_0|\psi(t)\rangle|$")
     ax1.set_xlabel("t (a.u.)")
 
     ax2.plot(ramped.times, ramped["overlap"], lw=1.2, color="tab:red")
     ramp_label = r"$\sin^2$ turn-on (4 cycles)"
     ax2.axvspan(0, n_ramp * period, color="orange", alpha=0.12, label=ramp_label)
-    for k in range(0, int(ramped.times[-1] / np.pi) + 1):
-        ax2.axvline(k * np.pi / omega, color="gray", ls=":", lw=0.5)
+    half_period = np.pi / omega
+    for k in range(int(ramped.times[-1] / half_period) + 1):
+        ax2.axvline(k * half_period, color="gray", ls=":", lw=0.5)
     ax2.set_title(r"Adiabatic $\sin^2$ turn-on: smooth, $\pi/\omega$-periodic response")
     ax2.set_xlabel("t (a.u.)")
     ax2.set_ylabel(r"$|\langle\psi_0|\psi(t)\rangle|$")

@@ -8,7 +8,7 @@ The time-dependent Schrödinger equation (TDSE) for one electron in one dimensio
 
 $$
 i\,\partial_t \psi(x,t) = H(t)\,\psi(x,t), \qquad
-H(t) = -\frac{1}{2}\frac{\partial^2}{\partial x^2} + V(x) + E(t)\,x ,
+H(t) = -\frac{1}{2}\frac{\partial^2}{\partial x^2} + V(x) + F(t)\,x ,
 $$
 
 is solved for two potentials:
@@ -16,9 +16,9 @@ is solved for two potentials:
 | Potential | $V(x)$ | Use |
 |---|---|---|
 | Harmonic oscillator | $\tfrac12\omega^2x^2$ | validation: exact spectrum $E_n = \omega(n+\tfrac12)$, coherent states |
-| Soft-core Coulomb | $-1/\sqrt{x^2+1}$ | 1D model atom (Javanainen, Eberly & Su 1988): $E_0 = -0.6699$, $E_1 = -0.2750$ a.u. |
+| Soft-core Coulomb | $-1/\sqrt{x^2+1}$ | 1D model atom (Javanainen, Eberly & Su 1988): $E_0 = -0.66986$, $E_1 = -0.27498$ a.u. at $\Delta x = 0.1$ (converged: $-0.66978$, $-0.27490$) |
 
-The laser is treated in the dipole approximation, length gauge, with $E(t) = E_0\, f(t)\sin(\omega t)$ and an envelope $f$ (constant, $\sin^2$ turn-on or trapezoid).
+The laser is treated in the dipole approximation, length gauge, with field $F(t) = F_0\, f(t)\sin(\omega t)$ and an envelope $f$ (constant, $\sin^2$ turn-on or trapezoid). The field amplitude is written $F_0$ to avoid confusion with the ground-state energy $E_0$.
 
 ## 2. Spatial discretisation
 
@@ -28,7 +28,7 @@ $$
 \psi''(x_j) \simeq \frac{\psi_{j-1} - 2\psi_j + \psi_{j+1}}{\Delta x^2} + O(\Delta x^2)
 $$
 
-turns $H$ into a real symmetric **tridiagonal** matrix with diagonal $1/\Delta x^2 + V(x_j) + E(t)x_j$ and constant off-diagonal $-1/(2\Delta x^2)$. Every operation (matrix–vector product, linear solve) is therefore $O(N)$.
+turns $H$ into a real symmetric **tridiagonal** matrix with diagonal $1/\Delta x^2 + V(x_j) + F(t)x_j$ and constant off-diagonal $-1/(2\Delta x^2)$. Every operation (matrix–vector product, linear solve) is therefore $O(N)$.
 
 Wavefunctions are normalised with the grid weight: $\sum_j |\psi_j|^2\,\Delta x = 1$, and $\langle \phi|\psi\rangle = \sum_j \phi_j^*\psi_j\,\Delta x$.
 
@@ -50,7 +50,7 @@ $$
 \varepsilon \leftarrow \varepsilon + \frac{1}{\langle\phi_k|\psi_{k+1}\rangle}
 $$
 
-lands on $E$. This makes the iteration converge in a handful of steps (7 iterations for the soft-Coulomb ground state, against 25 with a fixed shift). A few fixed-shift iterations are performed first so that the method locks onto the level nearest to the *initial* shift. Convergence is declared when the residual $\lVert H\phi - E\phi\rVert$ falls below $10^{-10}\max(1,|E|)$.
+lands on $E$. This makes the iteration converge very quickly in practice (7 iterations for the soft-Coulomb ground state, against 25 with a fixed shift). A few fixed-shift iterations are performed first so that the method locks onto the level nearest to the *initial* shift. Convergence is declared when the residual $\lVert H\phi - E\phi\rVert$ falls below $10^{-10}\max(1,|E|)$.
 
 ## 4. Time propagation: Crank–Nicolson
 
@@ -85,7 +85,7 @@ $$
 \bar E = \frac{2}{\Delta t}\arctan\frac{E\Delta t}{2} = E - \frac{E^3\Delta t^2}{12} + O(\Delta t^4).
 $$
 
-The scheme is **second order** in time, and the phase error grows like $E^3$: high-energy components (large momenta, i.e. short wavelengths) are the first to be dephased. `scripts/02_time_step_error.py` measures $|\bar E - E|$ by propagation and matches this closed form to the printed precision.
+The scheme is **second order** in time, and the phase error grows like $E^3$: high-energy components are the first to be dephased. Note that $E$ is measured from the zero of the potential; shifting the energy origin changes only a global phase, which is unobservable, but it does change this phase error, so the energy reference matters when choosing $\Delta t$. `scripts/02_time_step_error.py` measures $|\bar E - E|$ by propagation and matches this closed form to the printed precision.
 
 ### Time-dependent Hamiltonian
 
@@ -93,21 +93,21 @@ Evaluating $H$ at the mid-point $t_n + \Delta t/2$ keeps the local error $O(\Del
 
 ### Cost
 
-$1 + \tfrac{i\Delta t}{2}H$ is tridiagonal: each step is one $O(N)$ banded solve (LAPACK `gbsv` via `scipy.linalg.solve_banded` in Python, Thomas algorithm in Fortran). The dense textbook version (`tdse1d.reference`) costs $O(N^3)$ per step and is only kept as a test reference.
+$1 + \tfrac{i\Delta t}{2}H$ is tridiagonal: each step is one $O(N)$ solve (LAPACK `?gtsv` with partial pivoting, called by `scipy.linalg.solve_banded` for one sub- and one super-diagonal, in Python; the Thomas algorithm, without pivoting, in Fortran). The dense textbook version (`tdse1d.reference`) costs $O(N^3)$ per step and is only kept as a test reference.
 
 ## 5. Physics of the driven atom
 
 ### Sudden versus adiabatic turn-on
 
-With $E(t) = E_0\sin(\omega t)$ switched on abruptly at $t = 0$, the sudden kick excites the atom's *free* response at the Bohr frequencies, which beats against the forced response at $\omega$ ($\omega \pm \omega_{10}$, $\omega_{10} = E_1 - E_0 = 0.395$ a.u.). A smooth $\sin^2$ turn-on over a few cycles removes this transient: the ground state is then adiabatically polarised and $|\langle\psi_0|\psi(t)\rangle|$ oscillates at $2\omega$ (period $\pi/\omega$, because the polarisation is a second-order effect, $\propto E(t)^2$), with a slow decay due to ionisation.
+With $F(t) = F_0\sin(\omega t)$ switched on abruptly at $t = 0$, the sudden kick excites the atom's *free* response at the Bohr frequencies, which beats against the forced response at $\omega$ ($\omega \pm \omega_{10}$, $\omega_{10} = E_1 - E_0 = 0.395$ a.u.). A smooth $\sin^2$ turn-on over a few cycles removes this transient: the atom then follows the field-dressed (Floquet) state, and $|\langle\psi_0|\psi(t)\rangle|$ oscillates at $2\omega$ (period $\pi/\omega$) with an amplitude of order $F_0^2$, on top of a slow decay due to ionisation. In a two-level picture the excited-state amplitude is $c_1 \propto F_0\left[\frac{e^{i\omega t}}{\omega_{10}+\omega} - \frac{e^{-i\omega t}}{\omega_{10}-\omega}\right]$, so $|c_1|^2$ contains a term $\propto -\cos(2\omega t)/(\omega_{10}^2-\omega^2)$. Because the drive is above the first transition ($\omega > \omega_{10}$), this term is largest when the field crosses zero: the ground-state loss is in antiphase with $F(t)^2$ (correlation $-0.999$ in the simulation), whereas below resonance it would follow $F(t)^2$.
 
 ### One-photon ionisation (photoelectric effect)
 
 All frequencies used ($\omega \ge 0.8$ a.u.) exceed the ionisation potential $I_p = 0.67$ a.u., so a single photon ionises the atom. First-order time-dependent perturbation theory predicts:
 
-* **$1 - P_0 \propto E_0^2$** at weak field — measured log–log slope 2.0000 for $E_0 \le 0.01$; deviations appear at $E_0 \gtrsim 0.05$ (depletion of the ground state, higher orders);
-* **$1 - P_0$ linear in the pulse duration** (Fermi's golden rule: constant rate $\Gamma$) — measured $\Gamma \approx 4.8\times10^{-6}$ a.u. at $E_0 = 0.01$, $\omega = 1$;
-* a depletion that **decreases with $\omega$** above threshold, following the decrease of the photo-ionisation cross-section.
+* **$1 - P_0 \propto F_0^2$** at weak field — measured log–log slope 2.0000 for $F_0 \le 0.01$; deviations appear at $F_0 \gtrsim 0.05$ (depletion of the ground state, higher orders);
+* **$1 - P_0$ linear in the pulse duration** (Fermi's golden rule: constant rate $\Gamma$) — measured $\Gamma \approx 4.8\times10^{-6}$ a.u. at $F_0 = 0.01$, $\omega = 1$ (the negative intercept of the linear fit comes from the ramps, during which the field is weaker);
+* an ionisation **rate that decreases with $\omega$** above threshold, following the photo-ionisation cross-section. The scan uses pulses with a fixed number of cycles, whose duration scales as $1/\omega$, so the rate is obtained by dividing the depletion by $T_{\rm eff} = \int f(t)^2\,dt$. At $\omega = 1$ this gives $4.9\times10^{-6}$ a.u., consistent with the duration scan; the rate drops by a factor of about 500 between $\omega = 0.8$ and $2.5$.
 
 ### Box size
 

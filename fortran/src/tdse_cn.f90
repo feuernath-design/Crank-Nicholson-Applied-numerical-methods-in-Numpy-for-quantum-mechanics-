@@ -4,6 +4,11 @@
 !>   H(t) = -1/2 d^2/dx^2 + V(x) + E(t) x      (3-point finite differences)
 !>   (1 + i dt/2 H(t+dt/2)) psi(t+dt) = (1 - i dt/2 H(t+dt/2)) psi(t)
 !> The tridiagonal systems are solved with the Thomas algorithm, O(N) per step.
+!> Thomas elimination does not pivot. It is well behaved for the
+!> Crank-Nicolson matrix 1 + i dt/2 H used here, and is also used (as in many
+!> textbooks) for the indefinite matrix H - eps of the inverse iteration, but
+!> without a general stability guarantee; the Python version relies on LAPACK
+!> ?gtsv, which uses partial pivoting.
 module tdse_cn
    use, intrinsic :: iso_fortran_env, only: dp => real64
    implicit none
@@ -75,8 +80,9 @@ contains
       y(2:n) = y(2:n) + off*psi(1:n - 1)
    end subroutine apply_hamiltonian
 
-   !> Shifted inverse iteration with accelerated shift update
-   !> (same algorithm as tdse1d.eigen.inverse_iteration).
+   !> Shifted inverse iteration with accelerated shift update (same update
+   !> rule as tdse1d.eigen.inverse_iteration; the starting vector is supplied
+   !> by the caller and is constant in cn_propagate).
    !> On exit `phi` is normalised to sum(phi**2) = 1 (Euclidean norm).
    subroutine inverse_iteration(diag, off, shift, phi, energy, iterations, converged, tol, max_iter)
       real(dp), intent(in) :: diag(:), off, shift

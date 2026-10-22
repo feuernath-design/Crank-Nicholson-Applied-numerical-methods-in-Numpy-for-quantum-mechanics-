@@ -51,10 +51,29 @@ def test_shift_update_accelerates(soft_coulomb):
     slow = inverse_iteration(soft_coulomb, shift=-1.0, update_shift=False, max_iter=2000)
     fast = inverse_iteration(soft_coulomb, shift=-1.0)
     assert fast.converged and slow.converged
-    assert fast.iterations < slow.iterations
+    # 7 iterations with the update vs 25 with a fixed shift (see README)
+    assert fast.iterations <= 8
+    assert slow.iterations >= 20
 
 
 def test_non_convergence_warns(harmonic):
     with pytest.warns(RuntimeWarning):
         res = inverse_iteration(harmonic, shift=0.4, max_iter=1, update_shift=False)
     assert not res.converged
+
+
+def test_user_supplied_initial_vector(harmonic):
+    """A constant (even) start vector reaches the ground state, never odd levels."""
+    res = inverse_iteration(harmonic, shift=0.4, initial=np.ones(harmonic.n))
+    assert res.converged
+    assert res.energy == pytest.approx(harmonic.eigh(1)[0][0], abs=1e-11)
+    with pytest.raises(ValueError):
+        inverse_iteration(harmonic, shift=0.4, initial=np.ones(3))
+
+
+def test_shift_on_exact_eigenvalue_is_handled(harmonic):
+    """If the shift hits an eigenvalue exactly, the result is still the eigenpair."""
+    e, v = harmonic.eigh(1)
+    res = inverse_iteration(harmonic, shift=float(e[0]), initial=v[:, 0])
+    assert res.converged
+    assert res.energy == pytest.approx(e[0], abs=1e-11)
