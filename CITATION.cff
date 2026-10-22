@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Crank-Nicolson solver for the 1D time-dependent Schrodinger equation (Python + Fortran)"
+authors:
+  - family-names: Feuerstein
+    given-names: Nathan
+version: 1.0.0
+date-released: 2026-10-22
+license: MIT
+repository-code: "https://github.com/feuernath-design/Crank-Nicholson-Applied-numerical-methods-in-Numpy-for-quantum-mechanics-"
+keywords:
+  - quantum mechanics
+  - time-dependent Schrodinger equation
+  - Crank-Nicolson
+  - numerical methods
+  - photoionization

@@ -1,0 +1,12 @@
+! Displaced Gaussian (coherent state) in a harmonic trap, no laser field.
+! Expected: <x>(t) = x0 cos(t), norm conserved to machine precision.
+&config
+  potential = 'harmonic'
+  initial   = 'gaussian'
+  x_min = -20.0, x_max = 20.0, nx = 801
+  omega_osc = 1.0, x0 = 2.0, sigma = 1.0
+  e0 = 0.0
+  dt = 0.01, n_steps = 1000
+  record_every = 10
+  output = 'harmonic_wavepacket.csv'
+/

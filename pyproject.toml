@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tdse1d"
+version = "1.0.0"
+description = "Crank-Nicolson solver for the 1D time-dependent Schrodinger equation (Python + Fortran)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Nathan Feuerstein" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+]
+keywords = ["quantum mechanics", "Schrodinger equation", "Crank-Nicolson", "numerical methods", "TDSE"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Fortran",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Intended Audience :: Science/Research",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[project.urls]
+Repository = "https://github.com/feuernath-design/Crank-Nicholson-Applied-numerical-methods-in-Numpy-for-quantum-mechanics-"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]
+ignore = ["RUF002", "RUF003"]  # allow unicode in comments/docstrings

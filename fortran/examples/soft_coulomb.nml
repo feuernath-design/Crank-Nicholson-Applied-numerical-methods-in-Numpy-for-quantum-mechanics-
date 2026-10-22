@@ -1,0 +1,13 @@
+! 1D soft-Coulomb atom driven by a laser field (photo-ionisation run).
+! Ground state by inverse iteration, sin^2 turn-on over 4 cycles, then
+! 15 cycles at full amplitude; 128 steps per optical cycle.
+&config
+  potential = 'softcoulomb'
+  initial   = 'ground'
+  x_min = -150.0, x_max = 150.0, nx = 3001
+  omega = 1.0, e0 = 0.01, n_ramp = 4.0
+  dt = 0.0           ! <= 0 => 2*pi/omega/128
+  n_steps = 2432     ! 19 cycles x 128 steps
+  record_every = 4
+  output = 'soft_coulomb.csv'
+/
